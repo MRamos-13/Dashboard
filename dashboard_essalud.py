@@ -229,77 +229,196 @@ def create_managers_chart(df):
 
 def create_kanban_board(df):
     """Crear tablero Kanban basado en estados del protocolo"""
-    # Definir columnas del Kanban basadas en los estados encontrados
-    kanban_columns = {
-        'Elaboración del protocolo': '#FFE4B5',  # Naranja claro
-        'Elaboración de protocolo': '#FFE4B5',   # Naranja claro
-        'Elaboracion de protocolo': '#FFE4B5',   # Naranja claro
-        'Elaboracinn de protocolo': '#FFE4B5',   # Naranja claro
-        'Elaboracionn de protocolo': '#FFE4B5',  # Naranja claro
-        'Aprobado Comité de Etica': '#98FB98',   # Verde claro
-        'En Ejecución': '#90EE90',               # Verde
-        'En Ejecucion': '#90EE90',               # Verde
-        'RRI 1 Completo': '#87CEEB',            # Azul claro
-        'IRRI 1 (completo RR2 (en proyecto para III trimestre)': '#87CEEB',  # Azul claro
-        'Para autorizacion por Gerencia General': '#FFB6C1',  # Rosa claro
-        'Validacion de protocolo': '#DDA0DD',    # Ciruela claro
-        'RRI 1': '#87CEEB',                     # Azul claro
-        'En espera de respuesta de informe': '#F0E68C',  # Amarillo claro
-        'Elaboración de manuscrito': '#DDA0DD'   # Ciruela claro
-    }
+    # Obtener estados únicos reales de los datos
+    unique_statuses = df['status'].unique()
     
-    # Agrupar proyectos por estado
+    # Definir colores para diferentes tipos de estados
+    def get_status_color(status):
+        status_lower = status.lower()
+        if 'elaboración' in status_lower or 'elaboracion' in status_lower:
+            return '#FFE4B5'  # Naranja claro - En elaboración
+        elif 'aprobado' in status_lower or 'comité' in status_lower:
+            return '#98FB98'  # Verde claro - Aprobado
+        elif 'ejecución' in status_lower or 'ejecucion' in status_lower:
+            return '#90EE90'  # Verde - En ejecución
+        elif 'completo' in status_lower or 'rri' in status_lower.lower():
+            return '#87CEEB'  # Azul claro - Completado
+        elif 'autorizacion' in status_lower or 'gerencia' in status_lower:
+            return '#FFB6C1'  # Rosa claro - Pendiente autorización
+        elif 'validacion' in status_lower:
+            return '#DDA0DD'  # Ciruela claro - En validación
+        elif 'espera' in status_lower or 'respuesta' in status_lower:
+            return '#F0E68C'  # Amarillo claro - En espera
+        elif 'manuscrito' in status_lower:
+            return '#DDA0DD'  # Ciruela claro - Manuscrito
+        else:
+            return '#E6E6FA'  # Lavanda - Otros estados
+    
+    # Crear diccionario de colores basado en estados reales
+    kanban_columns = {}
+    for status in unique_statuses:
+        kanban_columns[status] = get_status_color(status)
+    
+    # Agrupar proyectos por estado real
     status_groups = {}
-    for status, color in kanban_columns.items():
-        projects = df[df['status'].str.contains(status, case=False, na=False)]
+    for status in unique_statuses:
+        projects = df[df['status'] == status]
         if not projects.empty:
             status_groups[status] = projects
     
     return status_groups, kanban_columns
 
 def create_kanban_display(status_groups, kanban_columns):
-    """Crear la visualización del tablero Kanban"""
+    """Crear la visualización del tablero Kanban con scroll mejorado"""
     st.markdown("### 📋 Tablero Kanban - Estados de Protocolos")
     
-    # Crear columnas para el Kanban
-    cols = st.columns(len(status_groups))
+    # Crear HTML completo para el Kanban con scroll
+    kanban_html = """
+    <div style="
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 15px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 15px;
+        margin: 20px 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    ">
+        <div style="
+            display: flex;
+            gap: 15px;
+            min-width: max-content;
+            padding-bottom: 10px;
+        ">
+    """
     
-    for i, (status, projects) in enumerate(status_groups.items()):
-        with cols[i]:
-            # Título de la columna con contador
-            st.markdown(f"""
+    # Generar columnas del Kanban
+    for status, projects in status_groups.items():
+        kanban_html += f"""
             <div style="
-                background-color: {kanban_columns[status]};
-                padding: 10px;
-                border-radius: 8px;
-                margin-bottom: 10px;
-                text-align: center;
-                font-weight: bold;
-                color: #333;
+                min-width: 280px;
+                max-width: 280px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                overflow: hidden;
             ">
-                {status}<br>
-                <span style="font-size: 1.2em;">{len(projects)} proyectos</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Mostrar proyectos en esta columna
-            for _, project in projects.iterrows():
-                st.markdown(f"""
+                <!-- Header de la columna -->
                 <div style="
-                    background-color: white;
-                    border: 1px solid #ddd;
-                    border-radius: 6px;
-                    padding: 8px;
-                    margin: 5px 0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    background: {kanban_columns[status]};
+                    padding: 15px;
+                    text-align: center;
+                    font-weight: bold;
+                    color: #333;
+                    font-size: 14px;
+                    border-bottom: 2px solid rgba(0,0,0,0.1);
                 ">
-                    <strong>{project['study'][:50]}{'...' if len(project['study']) > 50 else ''}</strong><br>
-                    <small style="color: #666;">
-                        👤 {project['manager']}<br>
-                        🏥 {project['network'][:30]}{'...' if len(project['network']) > 30 else ''}
-                    </small>
+                    <div style="font-size: 16px; margin-bottom: 5px;">{status}</div>
+                    <div style="
+                        background: rgba(255,255,255,0.3);
+                        padding: 5px 10px;
+                        border-radius: 20px;
+                        display: inline-block;
+                        font-size: 18px;
+                        font-weight: bold;
+                    ">{len(projects)} proyectos</div>
                 </div>
-                """, unsafe_allow_html=True)
+                
+                <!-- Contenedor de proyectos con scroll -->
+                <div style="
+                    max-height: 600px;
+                    overflow-y: auto;
+                    padding: 10px;
+                    background: #fafafa;
+                ">
+        """
+        
+        # Generar tarjetas de proyectos
+        for _, project in projects.iterrows():
+            kanban_html += f"""
+                    <div style="
+                        background: white;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        padding: 12px;
+                        margin-bottom: 10px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                        transition: all 0.3s ease;
+                        cursor: pointer;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)'">
+                        <div style="
+                            font-weight: bold;
+                            font-size: 13px;
+                            color: #2c3e50;
+                            margin-bottom: 8px;
+                            line-height: 1.3;
+                        ">{project['study'][:70]}{'...' if len(project['study']) > 70 else ''}</div>
+                        
+                        <div style="
+                            font-size: 11px;
+                            color: #7f8c8d;
+                            margin-bottom: 4px;
+                        ">👤 {project['manager'][:30]}{'...' if len(project['manager']) > 30 else ''}</div>
+                        
+                        <div style="
+                            font-size: 11px;
+                            color: #95a5a6;
+                        ">🏥 {project['network'][:40]}{'...' if len(project['network']) > 40 else ''}</div>
+                    </div>
+            """
+        
+        kanban_html += """
+                </div>
+            </div>
+        """
+    
+    kanban_html += """
+        </div>
+    </div>
+    
+    <style>
+    /* Scrollbar personalizado */
+    div[style*="overflow-y: auto"]::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    div[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    
+    div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    /* Scrollbar horizontal */
+    div[style*="overflow-x: auto"]::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    div[style*="overflow-x: auto"]::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    </style>
+    """
+    
+    # Usar st.components.v1.html para renderizar el HTML correctamente
+    import streamlit.components.v1 as components
+    components.html(kanban_html, height=700, scrolling=True)
 
 def main():
     """Función principal del dashboard"""
@@ -413,10 +532,6 @@ def main():
     - **Líneas prioritarias**: {priority_lines}
     - **Redes prestacionales**: {networks}
     - **Estados de protocolos**: {statuses}
-    
-    Este dashboard muestra información en tiempo real sobre los proyectos de investigación 
-    de ESSALUD, incluyendo líneas prioritarias, estados de protocolos, redes prestacionales 
-    y investigadores principales.
     """.format(
         total_projects=len(df),
         priority_lines=df['priority_line'].nunique(),
