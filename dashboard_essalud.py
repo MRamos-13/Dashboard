@@ -196,30 +196,30 @@ def create_network_chart(df):
     
     return fig
 
-def create_researchers_chart(df):
-    """Crear gráfico de investigadores principales"""
-    # Filtrar investigadores válidos
-    valid_investigators = df[
-        (df['principal_investigator'].notna()) & 
-        (df['principal_investigator'] != '') & 
-        (~df['principal_investigator'].str.contains('xxxxx', case=False, na=False))
+def create_managers_chart(df):
+    """Crear gráfico de todos los gestores DIS con cantidad de estudios"""
+    # Filtrar gestores válidos
+    valid_managers = df[
+        (df['manager'].notna()) & 
+        (df['manager'] != '') & 
+        (~df['manager'].str.contains('xxxxx', case=False, na=False))
     ]
     
-    researcher_counts = valid_investigators['principal_investigator'].value_counts().head(10)
+    manager_counts = valid_managers['manager'].value_counts()
     
-    if len(researcher_counts) > 0:
+    if len(manager_counts) > 0:
         fig = px.bar(
-            x=researcher_counts.values,
-            y=researcher_counts.index,
+            x=manager_counts.values,
+            y=manager_counts.index,
             orientation='h',
-            title="👥 Top 10 Investigadores Principales",
-            color=researcher_counts.values,
-            color_continuous_scale="Greens"
+            title="👥 Gestores DIS y Cantidad de Estudios",
+            color=manager_counts.values,
+            color_continuous_scale="Blues"
         )
         
         fig.update_layout(
-            xaxis_title="Número de Proyectos",
-            yaxis_title="Investigador Principal",
+            xaxis_title="Número de Estudios",
+            yaxis_title="Gestor DIS",
             height=500
         )
         
@@ -227,30 +227,79 @@ def create_researchers_chart(df):
     else:
         return None
 
-def create_timeline_chart(df):
-    """Crear gráfico de línea de tiempo por estado"""
-    # Simular fechas basadas en el ID del proyecto
-    df_timeline = df.copy()
-    df_timeline['fecha_simulada'] = pd.date_range(start='2023-01-01', periods=len(df), freq='M')
+def create_kanban_board(df):
+    """Crear tablero Kanban basado en estados del protocolo"""
+    # Definir columnas del Kanban basadas en los estados encontrados
+    kanban_columns = {
+        'Elaboración del protocolo': '#FFE4B5',  # Naranja claro
+        'Elaboración de protocolo': '#FFE4B5',   # Naranja claro
+        'Elaboracion de protocolo': '#FFE4B5',   # Naranja claro
+        'Elaboracinn de protocolo': '#FFE4B5',   # Naranja claro
+        'Elaboracionn de protocolo': '#FFE4B5',  # Naranja claro
+        'Aprobado Comité de Etica': '#98FB98',   # Verde claro
+        'En Ejecución': '#90EE90',               # Verde
+        'En Ejecucion': '#90EE90',               # Verde
+        'RRI 1 Completo': '#87CEEB',            # Azul claro
+        'IRRI 1 (completo RR2 (en proyecto para III trimestre)': '#87CEEB',  # Azul claro
+        'Para autorizacion por Gerencia General': '#FFB6C1',  # Rosa claro
+        'Validacion de protocolo': '#DDA0DD',    # Ciruela claro
+        'RRI 1': '#87CEEB',                     # Azul claro
+        'En espera de respuesta de informe': '#F0E68C',  # Amarillo claro
+        'Elaboración de manuscrito': '#DDA0DD'   # Ciruela claro
+    }
     
-    status_timeline = df_timeline.groupby(['fecha_simulada', 'status']).size().reset_index(name='count')
+    # Agrupar proyectos por estado
+    status_groups = {}
+    for status, color in kanban_columns.items():
+        projects = df[df['status'].str.contains(status, case=False, na=False)]
+        if not projects.empty:
+            status_groups[status] = projects
     
-    fig = px.line(
-        status_timeline,
-        x='fecha_simulada',
-        y='count',
-        color='status',
-        title="📅 Evolución de Estados en el Tiempo",
-        markers=True
-    )
+    return status_groups, kanban_columns
+
+def create_kanban_display(status_groups, kanban_columns):
+    """Crear la visualización del tablero Kanban"""
+    st.markdown("### 📋 Tablero Kanban - Estados de Protocolos")
     
-    fig.update_layout(
-        xaxis_title="Fecha",
-        yaxis_title="Número de Proyectos",
-        height=400
-    )
+    # Crear columnas para el Kanban
+    cols = st.columns(len(status_groups))
     
-    return fig
+    for i, (status, projects) in enumerate(status_groups.items()):
+        with cols[i]:
+            # Título de la columna con contador
+            st.markdown(f"""
+            <div style="
+                background-color: {kanban_columns[status]};
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                text-align: center;
+                font-weight: bold;
+                color: #333;
+            ">
+                {status}<br>
+                <span style="font-size: 1.2em;">{len(projects)} proyectos</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Mostrar proyectos en esta columna
+            for _, project in projects.iterrows():
+                st.markdown(f"""
+                <div style="
+                    background-color: white;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    padding: 8px;
+                    margin: 5px 0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">
+                    <strong>{project['study'][:50]}{'...' if len(project['study']) > 50 else ''}</strong><br>
+                    <small style="color: #666;">
+                        👤 {project['manager']}<br>
+                        🏥 {project['network'][:30]}{'...' if len(project['network']) > 30 else ''}
+                    </small>
+                </div>
+                """, unsafe_allow_html=True)
 
 def main():
     """Función principal del dashboard"""
@@ -309,6 +358,12 @@ def main():
     
     st.markdown("---")
     
+    # Tablero Kanban
+    status_groups, kanban_columns = create_kanban_board(filtered_df)
+    create_kanban_display(status_groups, kanban_columns)
+    
+    st.markdown("---")
+    
     # Gráficos principales
     col1, col2 = st.columns(2)
     
@@ -324,14 +379,11 @@ def main():
         st.plotly_chart(create_network_chart(filtered_df), use_container_width=True)
     
     with col4:
-        researchers_fig = create_researchers_chart(filtered_df)
-        if researchers_fig:
-            st.plotly_chart(researchers_fig, use_container_width=True)
+        managers_fig = create_managers_chart(filtered_df)
+        if managers_fig:
+            st.plotly_chart(managers_fig, use_container_width=True)
         else:
-            st.info("No hay datos suficientes de investigadores para mostrar el gráfico.")
-    
-    # Gráfico de línea de tiempo
-    st.plotly_chart(create_timeline_chart(filtered_df), use_container_width=True)
+            st.info("No hay datos suficientes de gestores DIS para mostrar el gráfico.")
     
     st.markdown("---")
     
