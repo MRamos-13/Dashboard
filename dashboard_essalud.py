@@ -71,8 +71,8 @@ def load_data():
                     # Limpiar datos
                     priority_line = parts[1].strip() if len(parts) > 1 else ""
                     manager = parts[2].strip() if len(parts) > 2 else ""
-                    study = parts[3].strip() if len(parts) > 3 else ""
-                    network = parts[4].strip() if len(parts) > 4 else ""
+                    network = parts[3].strip() if len(parts) > 3 else ""
+                    study = parts[4].strip() if len(parts) > 4 else ""
                     status = parts[5].strip() if len(parts) > 5 else ""
                     data_support = parts[6].strip() if len(parts) > 6 else ""
                     principal_investigator = parts[7].strip() if len(parts) > 7 else ""
@@ -111,7 +111,8 @@ def create_metrics(df):
         )
     
     with col2:
-        active_projects = len(df[df['status'].str.contains('Ejecucion|Ejecución', case=False, na=False)])
+        # Proyectos activos: En Ejecución + Enviado al Comité de Ética + Validación
+        active_projects = len(df[df['status'].str.contains('Ejecucion|Ejecución|Enviado.*Comité|Validacion', case=False, na=False)])
         st.metric(
             label="🔄 Proyectos Activos",
             value=active_projects,
@@ -119,7 +120,8 @@ def create_metrics(df):
         )
     
     with col3:
-        completed_projects = len(df[df['status'].str.contains('Completo|completo', case=False, na=False)])
+        # Proyectos completados: Reporte de Resultado + Completo + IRRI completo
+        completed_projects = len(df[df['status'].str.contains('Reporte.*Resultado|Completo|completo|IRRI.*completo', case=False, na=False)])
         st.metric(
             label="✅ Proyectos Completados",
             value=completed_projects,
