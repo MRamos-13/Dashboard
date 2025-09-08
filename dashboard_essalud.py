@@ -426,7 +426,7 @@ def main():
     """Función principal del dashboard"""
     
     # Título principal
-    st.markdown('<h1 class="main-header">🏥 Dashboard ESSALUD - Investigación y Desarrollo</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🏥 Dashboard - DIRECCIÓN DE INVESTIGACIÓN EN SALUD - IETSI</h1>', unsafe_allow_html=True)
     st.markdown("### Sistema de Gestión de Proyectos de Investigación")
     
     # Botón de actualización simple
